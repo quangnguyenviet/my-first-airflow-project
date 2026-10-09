@@ -1,0 +1,2 @@
+Remove all data(database, log)
+docker compose down --volumes --rmi all --remove-orphans
