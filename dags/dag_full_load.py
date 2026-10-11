@@ -3,8 +3,8 @@ from pathlib import Path
 
 from airflow import DAG
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.providers.standard.operators.python import PythonOperator
+from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 
 
 OLTP_CONN_ID = "shopviet_oltp"
@@ -33,6 +33,7 @@ def load_dim_date() -> None:
             )
         )
         current_date = date.fromordinal(current_date.toordinal() + 1)
+    hook.run("TRUNCATE TABLE dim_date RESTART IDENTITY CASCADE")
 
     hook.insert_rows(
         table="dim_date",
@@ -63,7 +64,7 @@ def load_dim_customers() -> None:
         """
     )
 
-    dwh.run("TRUNCATE TABLE dim_customers RESTART IDENTITY")
+    dwh.run("TRUNCATE TABLE dim_customers RESTART IDENTITY CASCADE")
     dwh.insert_rows(
         table="dim_customers",
         rows=[
@@ -103,7 +104,7 @@ def load_dim_products() -> None:
         """
     )
 
-    dwh.run("TRUNCATE TABLE dim_products RESTART IDENTITY")
+    dwh.run("TRUNCATE TABLE dim_products RESTART IDENTITY CASCADE")
     dwh.insert_rows(
         table="dim_products",
         rows=[
@@ -212,7 +213,7 @@ with DAG(
     template_searchpath=[str(Path(__file__).parent / "sql")],
     tags=["phase-1", "full-load"],
 ) as dag:
-    create_dwh_schema = PostgresOperator(
+    create_dwh_schema = SQLExecuteQueryOperator(
         task_id="create_dwh_schema",
         conn_id=DWH_CONN_ID,
         sql="dwh_schema.sql",
