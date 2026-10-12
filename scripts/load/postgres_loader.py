@@ -27,11 +27,6 @@ def upsert_fact_sales(dwh_conn_id: str, rows: list[tuple]) -> int:
     conn = dwh.get_conn()
     cur = conn.cursor()
     try:
-        print("Hook class:", type(dwh))
-        print("Connection class:", type(conn))
-        print("Connection module:", type(conn).__module__)
-        print("Cursor class:", type(cur))
-        print("Cursor module:", type(cur).__module__)
         cur.executemany(UPSERT_SQL, rows)
         conn.commit()
         return cur.rowcount
