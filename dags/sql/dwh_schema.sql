@@ -47,3 +47,14 @@ CREATE TABLE IF NOT EXISTS fact_sales (
     order_status VARCHAR(20),
     loaded_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS etl_watermark (
+    pipeline_name VARCHAR(100) PRIMARY KEY,
+    last_watermark TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Khởi tạo mốc ban đầu (nếu chưa có)
+INSERT INTO etl_watermark (pipeline_name, last_watermark)
+VALUES ('fact_sales_incremental', '2020-01-01 00:00:00')
+ON CONFLICT (pipeline_name) DO NOTHING;

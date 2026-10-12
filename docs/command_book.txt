@@ -1,2 +1,13 @@
 Remove all data(database, log)
 docker compose down --volumes --rmi all --remove-orphans
+
+
+
+docker compose exec -T shopviet-oltp \
+  psql -U shopviet -d shopviet_oltp \
+  -v ON_ERROR_STOP=1 \
+  -f - < sql/seed/seed_data.sql
+
+  python -m pip install "apache-airflow==3.3.2" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.2/constraints-3.14.txt"
+
+  pip install apache-airflow-providers-postgres
