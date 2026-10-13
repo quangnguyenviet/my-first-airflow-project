@@ -2,6 +2,7 @@ from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
 from datetime import timedelta, datetime
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
+from scripts.storage.parquet_store import upload_rows_as_parquet, download_rows_from_parquet
 
 from scripts.extract.postgres_extractor import get_watermark, extract_orders_since
 from scripts.load.postgres_loader import (
@@ -27,16 +28,44 @@ def _get_wm(**ctx):
 def _extract(**ctx):
     wm = ctx["ti"].xcom_pull(key="watermark", task_ids="get_watermark")
     rows = extract_orders_since(OLTP_CONN_ID, wm)
+    print(f"Extracted rows: {len(rows)}")
     # XCom có giới hạn size - với batch lớn nên ghi ra file/S3
     ctx["ti"].xcom_push(key="row_count", value=len(rows))
     ctx["ti"].xcom_push(key="max_source_updated_at", value=max((r[9] for r in rows), default=None).isoformat() if rows else None)
     # Trong demo nhỏ có thể push luôn rows; production: ghi parquet rồi push path
-    ctx["ti"].xcom_push(key="rows", value=[list(r) for r in rows])
+    # ctx["ti"].xcom_push(key="rows", value=[list(r) for r in rows])
+
+    # production: ghi ra file parquet rồi upload lên S3, push path
+    object_key = (
+        "bronze/fact_sales/"
+        f"run_date={ctx['logical_date'].strftime('%Y-%m-%d')}/"
+        f"run_id={ctx['run_id']}/"
+        "orders.parquet"
+    )
+    parquet_uri = upload_rows_as_parquet(rows, object_key)
+
+    ctx["ti"].xcom_push(key="parquet_uri", value=parquet_uri)
+
     return len(rows)
 
 def _load(**ctx):
-    rows = ctx["ti"].xcom_pull(key="rows", task_ids="extract_orders")
-    rows = [tuple(r) for r in rows] if rows else []
+    # quick demo: pull rows từ xcom; production: pull path từ xcom rồi download parquet
+    # rows = ctx["ti"].xcom_pull(key="rows", task_ids="extract_orders")
+    # rows = [tuple(r) for r in rows] if rows else []
+
+    # production: pull path từ xcom rồi download parquet
+    parquet_uri = ctx["ti"].xcom_pull(key="parquet_uri", task_ids="extract_orders")
+
+    if not parquet_uri:
+        return 0
+
+    if not parquet_uri.startswith("s3://"):
+        raise ValueError(f"Expected parquet_uri to start with 's3://', got {parquet_uri}")
+
+    _, object_key = parquet_uri[5:].split("/", 1)
+    rows = download_rows_from_parquet(object_key)
+
+    
     resolved = resolve_surrogate_keys(DWH_CONN_ID, rows)
     n = upsert_fact_sales(DWH_CONN_ID, resolved)
     return n

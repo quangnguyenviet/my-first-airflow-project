@@ -45,12 +45,19 @@ def resolve_surrogate_keys(dwh_conn_id: str, rows: list[tuple]) -> list[tuple]:
     try:
         # Map customer_id -> customer_sk
         customer_ids = list({r[2] for r in rows})
-        cur.execute(
-            "SELECT customer_id, customer_sk FROM dim_customers "
-            "Where is_current = TRUE AND customer_id = ANY(%s)",
-            (customer_ids,)
+        # cur.execute(
+        #     "SELECT customer_id, customer_sk FROM dim_customers "
+        #     "Where is_current = TRUE AND customer_id = ANY(%s)",
+        #     (customer_ids,)
+        # )
+        # cmap = dict(cur.fetchall())
+        cmap = dict(
+            dwh.get_records(
+                """SELECT customer_id, customer_sk FROM dim_customers
+                WHERE is_current = TRUE AND customer_id = ANY(%s)""",
+                (customer_ids,)
+            )
         )
-        cmap = dict(cur.fetchall())
 
         # Map product_id -> product_sk
         product_ids = list({r[3] for r in rows})
