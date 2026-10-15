@@ -45,7 +45,8 @@ CREATE TABLE IF NOT EXISTS fact_sales (
     unit_price NUMERIC(12, 2) NOT NULL,
     total_amount NUMERIC(12, 2) NOT NULL,
     order_status VARCHAR(20),
-    loaded_at TIMESTAMP NOT NULL DEFAULT NOW()
+    loaded_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    source_updated_at TIMESTAMP NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS etl_watermark (

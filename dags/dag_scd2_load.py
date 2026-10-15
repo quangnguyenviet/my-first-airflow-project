@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
-from airflow.sdk import chain
 
 
 from scripts.extract.dwh_extractor import (

@@ -1,3 +1,11 @@
+echo -e "AIRFLOW_UID=$(id -u)" > .env
+
+docker compose up airflow-init
+
+docker compose up -d
+
+user: airflow password: airflow
+
 Remove all data(database, log)
 docker compose down --volumes --rmi all --remove-orphans
 
